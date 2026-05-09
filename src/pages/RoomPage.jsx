@@ -262,6 +262,14 @@ function RoomPage()
                 }
             }
         )
+
+        socket.on("peer-left", () => {
+            offerCreated.current = false;
+
+            if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = null;
+            }
+        })
     }
 
     //
