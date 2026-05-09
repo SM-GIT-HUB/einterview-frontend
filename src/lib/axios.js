@@ -1,8 +1,9 @@
 import axios from "axios"
 
 const api = axios.create({
+
     baseURL:
-        "https://einterview.onrender.com/api/v1",
+        import.meta.env.VITE_API_URL,
 
     withCredentials: true
 })

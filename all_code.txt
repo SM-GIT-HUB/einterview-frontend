@@ -203,12 +203,27 @@ function CreateRoomPage()
 
         try {
 
-            await createRoom(form);
+            const toISO = (localStr) => {
+                const date = new Date(localStr);
+                const offset = -date.getTimezoneOffset();
+                const sign = offset >= 0 ? "+" : "-";
+                const pad = (n) =>
+                    String(Math.floor(Math.abs(n))).padStart(2, "0");
+                return (
+                    localStr + ":00" +
+                    sign +
+                    pad(offset / 60) + ":" +
+                    pad(offset % 60)
+                );
+            };
 
-            toast.success(
-                "Room created"
-            )
+            await createRoom({
+                ...form,
+                startTime: toISO(form.startTime),
+                endTime:   toISO(form.endTime),
+            });
 
+            toast.success("Room created")
             navigate("/home");
         }
         catch(err) {
@@ -662,7 +677,7 @@ function HomePage()
                                         text-2xl
                                         font-semibold
                                     ">
-                                        Interview Room
+                                        {room.name}
                                     </h2>
 
                                     <p className="

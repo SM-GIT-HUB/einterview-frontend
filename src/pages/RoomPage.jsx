@@ -362,7 +362,7 @@ function RoomPage()
         if (!room) return;
 
         const socket =
-            io("https://einterview.onrender.com", {
+            io(import.meta.env.VITE_API_URL, {
                 withCredentials: true
             })
 
