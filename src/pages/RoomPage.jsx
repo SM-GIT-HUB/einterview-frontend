@@ -362,7 +362,7 @@ function RoomPage()
         if (!room) return;
 
         const socket =
-            io(import.meta.env.VITE_API_URL, {
+            io(import.meta.env.VITE_API_SOCKET, {
                 withCredentials: true
             })
 

@@ -139,8 +139,9 @@ FILE: src\lib\axios.js
 import axios from "axios"
 
 const api = axios.create({
+
     baseURL:
-        "https://einterview.onrender.com/api/v1",
+        import.meta.env.VITE_API_URL,
 
     withCredentials: true
 })
@@ -1682,7 +1683,7 @@ function RoomPage()
         if (!room) return;
 
         const socket =
-            io("https://einterview.onrender.com", {
+            io(import.meta.env.VITE_API_URL, {
                 withCredentials: true
             })
 
