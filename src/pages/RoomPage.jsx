@@ -371,6 +371,18 @@ function RoomPage()
 
                 localStream.current = null;
             }
+
+            offerCreated.current = false;
+
+            if (localVideoRef.current)
+            {
+                localVideoRef.current.srcObject = null;
+            }
+
+            if (remoteVideoRef.current)
+            {
+                remoteVideoRef.current.srcObject = null;
+            }
         }
 
     }, [room])
