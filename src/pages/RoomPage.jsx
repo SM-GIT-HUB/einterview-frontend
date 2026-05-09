@@ -325,7 +325,7 @@ function RoomPage()
         if (!room) return;
 
         const socket =
-            io("http://localhost:3000", {
+            io("https://einterview.onrender.com", {
                 withCredentials: true
             })
 
