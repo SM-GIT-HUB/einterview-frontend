@@ -280,7 +280,7 @@ function HomePage()
                                         text-2xl
                                         font-semibold
                                     ">
-                                        Interview Room
+                                        {room.name}
                                     </h2>
 
                                     <p className="
