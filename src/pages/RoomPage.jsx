@@ -19,22 +19,25 @@ import { io }
 from "socket.io-client"
 
 import api from "../lib/axios"
+import { updateRoomNotes, updateInterviewScore } from "../api/room-api"
+import useAuthStore from "../store/auth-store"
 
 function RoomPage()
 {
     const navigate = useNavigate();
+    const { roomId } = useParams();
+    const { user } = useAuthStore();
 
-    const { roomId } =
-        useParams();
+    const [room, setRoom] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [timeLeft, setTimeLeft] = useState("");
 
-    const [room, setRoom] =
-        useState(null);
-
-    const [loading, setLoading] =
-        useState(true);
-
-    const [timeLeft, setTimeLeft] =
-        useState("");
+    // examiner-only panel
+    const [notes, setNotes]             = useState("");
+    const [score, setScore]             = useState("");
+    const [savingNotes, setSavingNotes] = useState(false);
+    const [savingScore, setSavingScore] = useState(false);
+    const [panelTab, setPanelTab]       = useState("code"); // "code" | "notes"
 
     const isRemoteChange =
         useRef(false);
@@ -334,6 +337,9 @@ function RoomPage()
                 }
 
                 setRoom(roomData);
+                // seed examiner fields from saved room data
+                setNotes(roomData.notes || "");
+                setScore(roomData.interviewScore ?? "");
             }
             catch(err) {
 
@@ -362,7 +368,7 @@ function RoomPage()
         if (!room) return;
 
         const socket =
-            io(import.meta.env.VITE_API_SOCKET, {
+            io(import.meta.env.VITE_SOCKET_URL || "http://localhost:3000", {
                 withCredentials: true
             })
 
@@ -501,8 +507,7 @@ function RoomPage()
 
     function handleChange(value)
     {
-        const updatedCode =
-            value || "";
+        const updatedCode = value || "";
 
         setCode(updatedCode);
 
@@ -512,13 +517,31 @@ function RoomPage()
             return;
         }
 
-        socketRef.current?.emit(
-            "code-change",
-            {
-                roomId,
-                code: updatedCode
-            }
-        )
+        socketRef.current?.emit("code-change", { roomId, code: updatedCode })
+    }
+
+    async function saveNotes()
+    {
+        setSavingNotes(true);
+        try {
+            await updateRoomNotes(roomId, notes);
+            toast.success("Notes saved");
+        }
+        catch { toast.error("Failed to save notes"); }
+        finally { setSavingNotes(false); }
+    }
+
+    async function saveScore()
+    {
+        const num = Number(score);
+        if (isNaN(num) || num < 0) return toast.error("Enter a valid score");
+        setSavingScore(true);
+        try {
+            await updateInterviewScore(roomId, num);
+            toast.success("Interview score saved");
+        }
+        catch { toast.error("Failed to save score"); }
+        finally { setSavingScore(false); }
     }
 
     if (loading)
@@ -584,78 +607,113 @@ function RoomPage()
                 <div className="
                     bg-black
                     border-r border-zinc-800
-                    p-4
                     flex flex-col
-                    gap-4
                 ">
-
-                    <div className="
-                        relative
-                        rounded-2xl
-                        overflow-hidden
-                        border border-zinc-800
-                        bg-zinc-900
-                        aspect-video
-                    ">
-
-                        <video
-                            ref={localVideoRef}
-                            autoPlay
-                            muted
-                            playsInline
-                            className="
-                                w-full
-                                h-full
-                                object-cover
-                            "
-                        />
-
-                        <div className="
-                            absolute
-                            bottom-3 left-3
-                            bg-black/70
-                            px-3 py-1
-                            rounded-lg
-                            text-sm
-                        ">
-                            You
-                        </div>
-
+                    {/* Sidebar tab bar */}
+                    <div className="flex border-b border-zinc-800">
+                        <button
+                            onClick={() => setPanelTab("code")}
+                            className={`flex-1 py-2.5 text-xs font-medium transition ${
+                                panelTab === "code"
+                                ? "text-white border-b-2 border-white"
+                                : "text-zinc-500 hover:text-zinc-300"
+                            }`}
+                        >
+                            📷 Video
+                        </button>
+                        {user?.role === "examiner" && (
+                            <button
+                                onClick={() => setPanelTab("notes")}
+                                className={`flex-1 py-2.5 text-xs font-medium transition ${
+                                    panelTab === "notes"
+                                    ? "text-white border-b-2 border-white"
+                                    : "text-zinc-500 hover:text-zinc-300"
+                                }`}
+                            >
+                                📝 Notes & Score
+                            </button>
+                        )}
                     </div>
 
-                    <div className="
-                        relative
-                        rounded-2xl
-                        overflow-hidden
-                        border border-zinc-800
-                        bg-zinc-900
-                        aspect-video
-                    ">
+                    {/* Video feeds */}
+                    {panelTab === "code" && (
+                        <div className="p-4 flex flex-col gap-4">
+                            <div className="
+                                relative rounded-2xl overflow-hidden
+                                border border-zinc-800 bg-zinc-900 aspect-video
+                            ">
+                                <video
+                                    ref={localVideoRef}
+                                    autoPlay muted playsInline
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute bottom-3 left-3 bg-black/70 px-3 py-1 rounded-lg text-xs">
+                                    You
+                                </div>
+                            </div>
 
-                        <video
-                            ref={remoteVideoRef}
-                            autoPlay
-                            playsInline
-                            className="
-                                w-full
-                                h-full
-                                object-cover
-                            "
-                        />
-
-                        <div className="
-                            absolute
-                            bottom-3 left-3
-                            bg-black/70
-                            px-3 py-1
-                            rounded-lg
-                            text-sm
-                        ">
-                            Participant
+                            <div className="
+                                relative rounded-2xl overflow-hidden
+                                border border-zinc-800 bg-zinc-900 aspect-video
+                            ">
+                                <video
+                                    ref={remoteVideoRef}
+                                    autoPlay playsInline
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute bottom-3 left-3 bg-black/70 px-3 py-1 rounded-lg text-xs">
+                                    Participant
+                                </div>
+                            </div>
                         </div>
+                    )}
 
-                    </div>
+                    {/* Examiner notes + score panel */}
+                    {panelTab === "notes" && user?.role === "examiner" && (
+                        <div className="p-4 flex flex-col gap-5 overflow-y-auto flex-1">
 
+                            <div>
+                                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide block mb-2">
+                                    Interview Notes
+                                </label>
+                                <textarea
+                                    className="w-full h-40 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-zinc-600 resize-none transition"
+                                    placeholder="Write notes about the candidate..."
+                                    value={notes}
+                                    onChange={e => setNotes(e.target.value)}
+                                />
+                                <button
+                                    onClick={saveNotes}
+                                    disabled={savingNotes}
+                                    className="mt-2 w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-sm transition disabled:opacity-50"
+                                >
+                                    {savingNotes ? "Saving..." : "Save Notes"}
+                                </button>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide block mb-2">
+                                    Interview Score
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-zinc-600 transition"
+                                    placeholder="e.g. 85"
+                                    value={score}
+                                    onChange={e => setScore(e.target.value)}
+                                />
+                                <button
+                                    onClick={saveScore}
+                                    disabled={savingScore}
+                                    className="mt-2 w-full bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-xl text-sm transition disabled:opacity-50"
+                                >
+                                    {savingScore ? "Saving..." : "Save Score"}
+                                </button>
+                            </div>
+
+                        </div>
+                    )}
                 </div>
 
                 <div className="h-full">

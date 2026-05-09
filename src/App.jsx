@@ -23,7 +23,8 @@ function App()
                 const response =
                     await me();
 
-                setUser(response.data);
+                // unified backend: { success, message, data: user }
+                setUser(response.data || response);
             }
             catch {
 
