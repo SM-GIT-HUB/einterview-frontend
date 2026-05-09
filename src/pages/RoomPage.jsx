@@ -264,11 +264,40 @@ function RoomPage()
         )
 
         socket.on("peer-left", () => {
-            offerCreated.current = false;
+            if (peerConnection.current) {
+                peerConnection.current.ontrack = null;
+                peerConnection.current.onicecandidate = null;
+                peerConnection.current.close();
+                peerConnection.current = null;
+            }
 
             if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = null;
             }
+
+            offerCreated.current = false;
+
+            peerConnection.current = new RTCPeerConnection({
+                iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+            });
+
+            if (localStream.current) {
+                localStream.current.getTracks().forEach(track => {
+                    peerConnection.current.addTrack(track, localStream.current);
+                });
+            }
+
+            peerConnection.current.ontrack = (event) => {
+                if (remoteVideoRef.current) {
+                    remoteVideoRef.current.srcObject = event.streams[0];
+                }
+            };
+
+            peerConnection.current.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit("ice-candidate", { roomId, candidate: event.candidate });
+                }
+            };
         })
     }
 
